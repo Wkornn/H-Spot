@@ -1,0 +1,22 @@
+datasets:
+  - year: 2019
+    resource_id: 4d919e5b-aa06-4fe4-8a13-5571747a1254
+
+  - year: 2020
+    resource_id: 40476c7b-4194-4dc2-aba5-7326819ed071
+
+  - year: 2021
+    resource_id: d0a8601a-3ee5-4ce8-8e9d-3dae3915dc30
+  
+  - year: 2022
+    resource_id: 733b7874-bd5f-44b9-b271-650890b061f2
+
+  - year: 2023
+    resource_id: 661f2ead-1f28-4cd9-8a67-1bef76b33ef6
+
+  - year: 2024
+    resource_id: 83e9fae0-5f33-45e7-9a6d-6d5ad2060a08
+
+  - year: 2025
+    resource_id: e1db5e93-2b70-4ee4-b6d7-7ead76d14a09
+
