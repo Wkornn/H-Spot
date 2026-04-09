@@ -6,12 +6,23 @@ BASE_URL = "https://itic.longdo.com/opendata/probe-data"
 OUTPUT_DIR = "data/raw/iTIC_probe_data"
 
 
-def download_file(url, file_path):
-    with requests.get(url, stream=True) as r:
-        r.raise_for_status()
-        with open(file_path, "wb") as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                f.write(chunk)
+def download_file(url, file_path, retries=5):
+    for attempt in range(1, retries + 1):
+        existing_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
+        headers = {"Range": f"bytes={existing_size}-"} if existing_size else {}
+
+        try:
+            with requests.get(url, headers=headers, stream=True, timeout=60) as r:
+                r.raise_for_status()
+                mode = "ab" if existing_size else "wb"
+                with open(file_path, mode) as f:
+                    for chunk in r.iter_content(chunk_size=1024 * 1024):
+                        f.write(chunk)
+            return
+        except Exception as e:
+            print(f"  Attempt {attempt}/{retries} failed: {e}")
+            if attempt == retries:
+                raise
 
 
 def load_config(config_path="configs/data_sources.yaml"):
