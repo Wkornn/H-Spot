@@ -1,3 +1,28 @@
+osm:
+  place: "Bangkok, Thailand"
+  layers:
+    - name: roads
+      output_path: "data/raw/osm_roads.gpkg"
+      tags:
+        highway: true
+
+    - name: buildings
+      output_path: "data/raw/osm_buildings.gpkg"
+      tags:
+        building: true
+
+    - name: landuse
+      output_path: "data/raw/osm_landuse.gpkg"
+      tags:
+        landuse: true
+
+    - name: poi
+      output_path: "data/raw/osm_poi.gpkg"
+      tags:
+        amenity: [school, university, hospital, bar, restaurant, fuel, nightclub]
+        shop: [mall, supermarket, convenience]
+
+
 datasets:
   - year: 2019
     resource_id: 4d919e5b-aa06-4fe4-8a13-5571747a1254
@@ -7,7 +32,7 @@ datasets:
 
   - year: 2021
     resource_id: d0a8601a-3ee5-4ce8-8e9d-3dae3915dc30
-  
+
   - year: 2022
     resource_id: 733b7874-bd5f-44b9-b271-650890b061f2
 
@@ -19,4 +44,3 @@ datasets:
 
   - year: 2025
     resource_id: e1db5e93-2b70-4ee4-b6d7-7ead76d14a09
-

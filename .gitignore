@@ -1,1 +1,3 @@
 data/raw/
+cache/
+__pycache__/
