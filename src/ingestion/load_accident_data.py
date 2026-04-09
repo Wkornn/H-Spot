@@ -70,7 +70,7 @@ def main():
         year = dataset["year"]
         resource_id = dataset["resource_id"]
 
-        output_path = f"data/raw/accidents_{year}.csv"
+        output_path = f"data/raw/MOT_accident_data/accidents_{year}.csv"
 
         print(f"\n=== Year {year} ===")
         fetch_and_save(resource_id, output_path)

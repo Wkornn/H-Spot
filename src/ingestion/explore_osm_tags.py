@@ -56,7 +56,7 @@ def main():
             print(f"    {val:<35} {count}")
             all_pairs.append({"key": key, "value": val, "count": count})
 
-    output_path = "data/raw/osm_schema.csv"
+    output_path = "data/raw/osm/osm_schema.csv"
     pd.DataFrame(all_pairs).to_csv(output_path, index=False)
     print(f"\nSaved → {output_path}")
 

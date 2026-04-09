@@ -2,22 +2,22 @@ osm:
   place: "Bangkok, Thailand"
   layers:
     - name: roads
-      output_path: "data/raw/osm_roads.gpkg"
+      output_path: "data/raw/osm/osm_roads.gpkg"
       tags:
         highway: true
 
     - name: buildings
-      output_path: "data/raw/osm_buildings.gpkg"
+      output_path: "data/raw/osm/osm_buildings.gpkg"
       tags:
         building: true
 
     - name: landuse
-      output_path: "data/raw/osm_landuse.gpkg"
+      output_path: "data/raw/osm/osm_landuse.gpkg"
       tags:
         landuse: true
 
     - name: poi
-      output_path: "data/raw/osm_poi.gpkg"
+      output_path: "data/raw/osm/osm_poi.gpkg"
       tags:
         amenity: [school, university, hospital, bar, restaurant, fuel, nightclub]
         shop: [mall, supermarket, convenience]

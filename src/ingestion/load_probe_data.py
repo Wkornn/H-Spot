@@ -3,7 +3,7 @@ import requests
 import yaml
 
 BASE_URL = "https://itic.longdo.com/opendata/probe-data"
-OUTPUT_DIR = "data/raw/probe"
+OUTPUT_DIR = "data/raw/iTIC_probe_data"
 
 
 def download_file(url, file_path):
