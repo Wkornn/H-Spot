@@ -1,9 +1,41 @@
 import os
+import tarfile
 import requests
+import pandas as pd
 import yaml
 
 BASE_URL = "https://itic.longdo.com/opendata/probe-data"
-OUTPUT_DIR = "data/raw/iTIC_probe_data"
+RAW_DIR = "data/raw/iTIC_probe_data"
+OUT_DIR = "data/processed/probe_bangkok"
+
+PROBE_COLS = ["vehicle_id", "gps_valid", "lat", "lon", "timestamp",
+              "speed", "heading", "for_hire_light", "engine_acc"]
+
+
+def extract_bangkok(tar_path, out_path, bbox):
+    chunks = []
+    with tarfile.open(tar_path, "r:bz2") as tar:
+        for member in tar.getmembers():
+            if not member.isfile() or not member.name.endswith((".csv", ".out")):
+                continue
+            f = tar.extractfile(member)
+            for chunk in pd.read_csv(f, header=None, names=PROBE_COLS, chunksize=100_000,
+                                     dtype={"gps_valid": float, "speed": float, "lat": float, "lon": float}):
+                bkk = chunk[
+                    (chunk["gps_valid"] == 1) &
+                    (chunk["speed"] > 0) &
+                    (chunk["lat"].between(bbox["lat_min"], bbox["lat_max"])) &
+                    (chunk["lon"].between(bbox["lon_min"], bbox["lon_max"]))
+                ]
+                if not bkk.empty:
+                    chunks.append(bkk)
+
+    if chunks:
+        df = pd.concat(chunks, ignore_index=True)
+        df.to_parquet(out_path, index=False)
+        print(f"  Saved {len(df)} Bangkok rows → {out_path}")
+    else:
+        print(f"  No Bangkok rows found in {tar_path}")
 
 
 def download_file(url, file_path, retries=5):
@@ -31,10 +63,12 @@ def load_config(config_path="configs/data_sources.yaml"):
 
 
 def main():
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    os.makedirs(RAW_DIR, exist_ok=True)
+    os.makedirs(OUT_DIR, exist_ok=True)
 
     config = load_config()
     years = [d["year"] for d in config["datasets"]]
+    bbox = config["bangkok_bbox"]
 
     files = [
         f"PROBE-{year}{month:02d}.tar.bz2"
@@ -42,25 +76,40 @@ def main():
         for month in range(1, 13)
     ]
 
-    print(f"Downloading {len(files)} files...")
+    print(f"Processing {len(files)} files...")
 
     for filename in files:
-        file_path = os.path.join(OUTPUT_DIR, filename)
+        stem = filename.replace(".tar.bz2", "")
+        tar_path = os.path.join(RAW_DIR, filename)
+        out_path = os.path.join(OUT_DIR, f"{stem}.parquet")
 
-        if os.path.exists(file_path):
-            print(f"Skip (exists): {filename}")
+        # Already extracted — skip entirely
+        if os.path.exists(out_path):
+            print(f"Skip (done): {filename}")
             continue
 
-        url = f"{BASE_URL}/{filename}"
-        print(f"Downloading: {filename}...")
+        # Download if raw tar doesn't exist
+        if not os.path.exists(tar_path):
+            url = f"{BASE_URL}/{filename}"
+            print(f"Downloading: {filename}...")
+            try:
+                download_file(url, tar_path)
+            except requests.HTTPError as e:
+                print(f"  Not available: {e}")
+                if os.path.exists(tar_path):
+                    os.remove(tar_path)
+                continue
 
+        # Extract Bangkok rows then delete raw tar
+        print(f"Extracting Bangkok rows: {filename}...")
         try:
-            download_file(url, file_path)
-        except requests.HTTPError as e:
-            print(f"  Not available: {e}")
-            os.remove(file_path)
+            extract_bangkok(tar_path, out_path, bbox)
+            os.remove(tar_path)
+            print(f"  Deleted raw: {filename}")
+        except Exception as e:
+            print(f"  Extraction failed: {e}")
 
-    print(f"\nDone → {OUTPUT_DIR}")
+    print(f"\nDone → {OUT_DIR}")
 
 
 if __name__ == "__main__":

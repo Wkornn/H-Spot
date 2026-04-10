@@ -1,3 +1,9 @@
+bangkok_bbox:
+  lat_min: 13.4
+  lat_max: 14.0
+  lon_min: 100.3
+  lon_max: 100.9
+
 osm:
   place: "Bangkok, Thailand"
   layers:
