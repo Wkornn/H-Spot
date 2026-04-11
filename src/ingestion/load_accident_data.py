@@ -16,12 +16,10 @@ def fetch_and_save(resource_id, output_path, limit=1000, sleep_time=0.3):
     first_batch = True
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
     print(f"Start downloading → {resource_id}")
 
     while True:
         url = f"{BASE_URL}?resource_id={resource_id}&limit={limit}&offset={offset}"
-
         try:
             with urllib.request.urlopen(url, context=context) as response:
                 data = json.loads(response.read().decode("utf-8"))
@@ -31,21 +29,16 @@ def fetch_and_save(resource_id, output_path, limit=1000, sleep_time=0.3):
                     print("Finished downloading.")
                     break
 
-                # Write incrementally (memory safe)
                 mode = "w" if first_batch else "a"
-
                 with open(output_path, mode, newline="", encoding="utf-8-sig") as f:
                     writer = csv.DictWriter(f, fieldnames=records[0].keys())
-
                     if first_batch:
                         writer.writeheader()
                         first_batch = False
-
                     writer.writerows(records)
 
                 batch_size = len(records)
                 total += batch_size
-
                 print(f"Batch: {batch_size} | Total: {total}")
 
                 offset += batch_size
@@ -55,7 +48,7 @@ def fetch_and_save(resource_id, output_path, limit=1000, sleep_time=0.3):
             print(f"Error at offset {offset}: {e}")
             break
 
-    print(f"Saved to {output_path} ({total} records)")
+    print(f"Saved → {output_path} ({total} records)")
 
 
 def load_config(config_path="configs/data_sources.yaml"):
@@ -64,16 +57,23 @@ def load_config(config_path="configs/data_sources.yaml"):
 
 
 def main():
-    config = load_config()
+    config  = load_config()
+    raw_dir = config["accidents"]["raw_dir"]
 
     for dataset in config["datasets"]:
-        year = dataset["year"]
+        year        = dataset["year"]
         resource_id = dataset["resource_id"]
-
-        output_path = f"data/raw/MOT_accident_data/accidents_{year}.csv"
+        raw_path    = f"{raw_dir}/accidents_{year}.csv"
 
         print(f"\n=== Year {year} ===")
-        fetch_and_save(resource_id, output_path)
+
+        if os.path.exists(raw_path):
+            print(f"  Already exists, skipping.")
+            continue
+
+        fetch_and_save(resource_id, raw_path)
+
+    print(f"\nDone → {raw_dir}")
 
 
 if __name__ == "__main__":

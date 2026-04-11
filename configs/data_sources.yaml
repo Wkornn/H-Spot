@@ -4,6 +4,23 @@ bangkok_bbox:
   lon_min: 100.3
   lon_max: 100.9
 
+accidents:
+  # Raw full-Thailand CSVs (downloaded from MOT)
+  raw_dir: "data/raw/MOT_accident_data"
+  # Cleaned outputs
+  clean_gpkg: "data/processed/accident_bangkok/accidents_clean.gpkg"
+  clean_parquet: "data/processed/accident_bangkok/accidents_clean.parquet"
+  # Projected CRS for metric spatial operations
+  projected_crs: "EPSG:32647"
+  # Valid weather category values (anything else → 'อื่นๆ')
+  valid_weather:
+    - "แจ่มใส"
+    - "ฝนตก"
+    - "มีหมอก/ควัน/ฝุ่น"
+    - "มืดครึ้ม"
+    - "อื่นๆ"
+    - "ภัยธรรมชาติ เช่น พายุ น้ำท่วม"
+
 osm:
   place: "Bangkok, Thailand"
   layers:
