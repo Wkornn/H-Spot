@@ -5,14 +5,10 @@ bangkok_bbox:
   lon_max: 100.9
 
 accidents:
-  # Raw full-Thailand CSVs (downloaded from MOT)
   raw_dir: "data/raw/MOT_accident_data"
-  # Cleaned outputs
   clean_gpkg: "data/processed/accident_bangkok/accidents_clean.gpkg"
   clean_parquet: "data/processed/accident_bangkok/accidents_clean.parquet"
-  # Projected CRS for metric spatial operations
   projected_crs: "EPSG:32647"
-  # Valid weather category values (anything else → 'อื่นๆ')
   valid_weather:
     - "แจ่มใส"
     - "ฝนตก"
@@ -20,6 +16,31 @@ accidents:
     - "มืดครึ้ม"
     - "อื่นๆ"
     - "ภัยธรรมชาติ เช่น พายุ น้ำท่วม"
+
+road_segments:
+  input: "data/raw/osm/osm_roads.gpkg"
+  output: "data/processed/road_segments.gpkg"
+  intersections_output: "data/processed/intersections.gpkg"
+  snapped_accidents_output: "data/processed/accidents_snapped.gpkg"
+  snap_max_distance_m: 50
+  segment_length_m: 100
+  projected_crs: "EPSG:32647"
+  drivable_highway_types:
+    - motorway
+    - motorway_link
+    - trunk
+    - trunk_link
+    - primary
+    - primary_link
+    - secondary
+    - secondary_link
+    - tertiary
+    - tertiary_link
+    - unclassified
+    - residential
+
+boundary:
+  bangkok: "data/raw/bangkok_boundary.gpkg"
 
 osm:
   place: "Bangkok, Thailand"
