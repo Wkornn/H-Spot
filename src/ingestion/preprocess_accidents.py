@@ -47,6 +47,7 @@ def _time_bin(h: int) -> str:
 def main():
     config        = load_config()
     bbox          = config["bangkok_bbox"]
+    bkk_path      = config["boundary"]["bangkok"]
     acc_cfg       = config["accidents"]
     raw_dir       = acc_cfg["raw_dir"]
     out_gpkg      = acc_cfg["clean_gpkg"]
@@ -81,20 +82,10 @@ def main():
         frame['วันที่และเวลาที่เกิดเหตุ'] = (frame['วันที่เกิดเหตุ'] + frame['เวลา']).dt.round('s')
         frames[i] = frame.drop(columns=["วันที่เกิดเหตุ", "เวลา", "วันที่รายงาน", "เวลาที่รายงาน"], errors="ignore")
 
-    # ── 1. merge all CSVs ────────────────────────────────────────
+    # ── 3. merge all CSVs ────────────────────────────────────────
     df = pd.concat(frames, ignore_index=True)
     print(f"  Total rows (all Thailand): {len(df):,}")
-
-    # ── 3. Filter to Bangkok bbox ─────────────────────────────────────────────
-    lat = pd.to_numeric(df["LATITUDE"],  errors="coerce")
-    lon = pd.to_numeric(df["LONGITUDE"], errors="coerce")
-    in_bkk = (
-        lat.between(bbox["lat_min"], bbox["lat_max"]) &
-        lon.between(bbox["lon_min"], bbox["lon_max"])
-    )
-    df = df[in_bkk].copy()
-    print(f"  After Bangkok filter: {len(df):,} rows")
-
+    
     # ── 4. Build geometry ─────────────────────────────────────────────────────
     gdf = gpd.GeoDataFrame(
         df,
@@ -106,21 +97,26 @@ def main():
     )
     gdf = gdf.drop(columns=["LATITUDE", "LONGITUDE"])
 
-    # ── 5. Drop column-shift rows ─────────────────────────────────────────────
+    # ── 5. Filter to Bangkok boundary ─────────────────────────────────────────────
+    bkk = gpd.read_file(bkk_path)
+    bkk = bkk.to_crs(gdf.crs)
+    gdf = gpd.sjoin(gdf, bkk, how="inner", predicate="within")
+
+    # ── 6. Drop column-shift rows ─────────────────────────────────────────────
     # ~6 000 rows have a lat value in สภาพอากาศ — unrecoverable, drop them
     col_shift = ~gdf["สภาพอากาศ"].isin(valid_weather | {None}) & gdf["สภาพอากาศ"].notna()
     n_shift = col_shift.sum()
     gdf = gdf[~col_shift].copy()
     print(f"  Dropped column-shift rows: {n_shift:,}")
 
-    # ── 6. Normalise categorical columns ─────────────────────────────────────
+    # ── 7. Normalise categorical columns ─────────────────────────────────────
     gdf["สภาพอากาศ"] = gdf["สภาพอากาศ"].apply(
         lambda v: v if v in valid_weather else ("ไม่ระบุ" if pd.isna(v) else "อื่นๆ")
     )
     for col in ["มูลเหตุสันนิษฐาน", "ลักษณะการเกิดเหตุ"]:
         gdf[col] = gdf[col].fillna("ไม่ระบุ")
 
-    # ── 7. Datetime features ──────────────────────────────────────────────────
+    # ── 8. Datetime features ──────────────────────────────────────────────────
     dt = gdf["วันที่และเวลาที่เกิดเหตุ"]
     gdf["hour"]        = dt.dt.hour
     gdf["day_of_week"] = dt.dt.dayofweek
@@ -128,18 +124,18 @@ def main():
     gdf["year"]        = dt.dt.year
     gdf["time_bin"]    = gdf["hour"].apply(_time_bin)
 
-    # ── 8. Severity ───────────────────────────────────────────────────────────
+    # ── 9. Severity ───────────────────────────────────────────────────────────
     gdf["severity"]       = gdf.apply(_severity, axis=1)
     gdf["severity_label"] = gdf["severity"].map(SEVERITY_LABEL)
 
-    # ── 9. UTM coords ─────────────────────────────────────────────────────────
+    # ── 10. UTM coords ─────────────────────────────────────────────────────────
     gdf_utm = gdf.to_crs(projected_crs)
     gdf["x_utm"] = gdf_utm.geometry.x
     gdf["y_utm"] = gdf_utm.geometry.y
 
     print(f"  Final clean rows: {len(gdf):,}")
 
-    # ── 10. Save ──────────────────────────────────────────────────────────────
+    # ── 11. Save ──────────────────────────────────────────────────────────────
     gdf.to_file(out_gpkg, driver="GPKG")
     print(f"  Saved → {out_gpkg}")
 
@@ -148,7 +144,7 @@ def main():
     gdf_utm.to_parquet(out_parquet, index=False)
     print(f"  Saved → {out_parquet}")
 
-    # ── 11. Summary ───────────────────────────────────────────────────────────
+    # ── 12. Summary ───────────────────────────────────────────────────────────
     print("\n── Summary ──────────────────────────────────────────────────────")
     print(gdf["severity_label"].value_counts().to_string())
     print()
