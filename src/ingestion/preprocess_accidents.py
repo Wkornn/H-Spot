@@ -56,17 +56,36 @@ def main():
 
     os.makedirs(os.path.dirname(out_gpkg), exist_ok=True)
 
-    # ── 1. Load & combine all raw CSVs ────────────────────────────────────────
+    # ── 1. Load all raw CSVs ────────────────────────────────────────
     raw_files = sorted(glob.glob(f"{raw_dir}/accidents_*.csv"))
     if not raw_files:
         raise FileNotFoundError(f"No raw CSVs found in {raw_dir}/. Run load_accident_data.py first.")
 
     print(f"Loading {len(raw_files)} raw CSV(s) from {raw_dir} …")
     frames = [pd.read_csv(f, encoding="utf-8-sig", low_memory=False) for f in raw_files]
+
+    # ── 2. Parse & merge datetime ─────────────────────────────────────────────
+    for i, frame in enumerate(frames):
+        if i < 4:
+            frame['วันที่เกิดเหตุ'] = pd.to_datetime(frame['วันที่เกิดเหตุ'])
+            frame['เวลา'] = pd.to_timedelta(frame['เวลา'] + ':00')
+        elif i == 4:
+            frame['วันที่เกิดเหตุ'] = pd.to_datetime(frame['วันที่เกิดเหตุ'], format='%m/%d/%Y')
+            frame['เวลา'] = pd.to_timedelta(frame['เวลา'] + ':00')           
+        elif i == 5:
+            frame['วันที่เกิดเหตุ'] = pd.to_datetime(frame['วันที่เกิดเหตุ'], origin='1899-12-30', unit='D')
+            frame['เวลา'] = pd.to_timedelta(frame['เวลา'], unit='D')
+        elif i == 6:
+            frame['วันที่เกิดเหตุ'] = pd.to_datetime(frame['วันที่เกิดเหตุ'], origin='1899-12-30', unit='D')
+            frame['เวลา'] = pd.to_timedelta(frame['เวลา'] + ':00')
+        frame['วันที่และเวลาที่เกิดเหตุ'] = (frame['วันที่เกิดเหตุ'] + frame['เวลา']).dt.round('s')
+        frames[i] = frame.drop(columns=["วันที่เกิดเหตุ", "เวลา", "วันที่รายงาน", "เวลาที่รายงาน"], errors="ignore")
+
+    # ── 1. merge all CSVs ────────────────────────────────────────
     df = pd.concat(frames, ignore_index=True)
     print(f"  Total rows (all Thailand): {len(df):,}")
 
-    # ── 2. Filter to Bangkok bbox ─────────────────────────────────────────────
+    # ── 3. Filter to Bangkok bbox ─────────────────────────────────────────────
     lat = pd.to_numeric(df["LATITUDE"],  errors="coerce")
     lon = pd.to_numeric(df["LONGITUDE"], errors="coerce")
     in_bkk = (
@@ -76,7 +95,7 @@ def main():
     df = df[in_bkk].copy()
     print(f"  After Bangkok filter: {len(df):,} rows")
 
-    # ── 3. Build geometry ─────────────────────────────────────────────────────
+    # ── 4. Build geometry ─────────────────────────────────────────────────────
     gdf = gpd.GeoDataFrame(
         df,
         geometry=gpd.points_from_xy(
@@ -86,14 +105,6 @@ def main():
         crs="EPSG:4326",
     )
     gdf = gdf.drop(columns=["LATITUDE", "LONGITUDE"])
-
-    # ── 4. Parse & merge datetime ─────────────────────────────────────────────
-    gdf["วันที่และเวลาที่เกิดเหตุ"] = pd.to_datetime(
-        gdf["วันที่เกิดเหตุ"].astype(str).str[:10] + " " + gdf["เวลา"].astype(str),
-        errors="coerce",
-    )
-    gdf = gdf.drop(columns=["วันที่เกิดเหตุ", "เวลา", "วันที่รายงาน", "เวลาที่รายงาน"],
-                   errors="ignore")
 
     # ── 5. Drop column-shift rows ─────────────────────────────────────────────
     # ~6 000 rows have a lat value in สภาพอากาศ — unrecoverable, drop them
