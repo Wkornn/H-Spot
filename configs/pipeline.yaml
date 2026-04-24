@@ -1,0 +1,14 @@
+# H-Spot Bangkok: Pipeline Execution Control Panel
+# --------------------------------------------------
+# Set to 'true' to run a phase by default when running: python run_pipeline.py
+# Command-line flags (e.g. --force) will always override these settings.
+
+pipeline:
+  ingest: true       # Step 1: Download/Load OSM and Accident data
+  preprocess: true   # Step 2: Clean data and Segment roads
+  features: true      # Step 3: Generate all feature parquets
+  matrix: true        # Step 4: Merge everything into the final dataset
+  
+  # Global Settings
+  force: false        # If false, skips work if output file already exists
+  run_probe: true   # Even if features=true, skip probe data unless this is true (slow!)
