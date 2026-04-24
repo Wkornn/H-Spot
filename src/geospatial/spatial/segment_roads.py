@@ -23,11 +23,8 @@ CONFIG_PATH = "configs/data_sources.yaml"
 def load_config(path=CONFIG_PATH):
     with open(path) as f:
         cfg = yaml.safe_load(f)
-    bbox_cfg = cfg["bangkok_bbox"]
     seg_cfg  = cfg["road_segments"]
     return {
-        "bbox":                 (bbox_cfg["lon_min"], bbox_cfg["lat_min"],
-                                 bbox_cfg["lon_max"], bbox_cfg["lat_max"]),
         "boundary":             cfg["boundary"]["bangkok"],
         "input":                seg_cfg["input"],
         "output":               seg_cfg["output"],
@@ -76,11 +73,12 @@ def main():
     print("Loading Bangkok boundary...")
     boundary = gpd.read_file(cfg["boundary"]).to_crs("EPSG:4326")
     bkk_geom = boundary.union_all()
+    bkk_bbox = bkk_geom.bounds
 
     print("Loading OSM roads...")
-    roads = gpd.read_file(cfg["input"], bbox=cfg["bbox"])
+    roads = gpd.read_file(cfg["input"], bbox=bkk_bbox)
     roads = roads[roads["highway"].isin(cfg["drivable"])].copy()
-    # Clip to actual Bangkok polygon (not just bbox)
+    # Clip to Bangkok polygon
     roads = roads[roads.geometry.intersects(bkk_geom)].copy()
     print(f"  Drivable roads in Bangkok: {len(roads):,}")
 

@@ -2,6 +2,8 @@ import os
 import tarfile
 import requests
 import pandas as pd
+import geopandas as gpd
+from shapely.geometry import points_from_xy
 import yaml
 
 BASE_URL = "https://itic.longdo.com/opendata/probe-data"
@@ -12,7 +14,14 @@ PROBE_COLS = ["vehicle_id", "gps_valid", "lat", "lon", "timestamp",
               "speed", "heading", "for_hire_light", "engine_acc"]
 
 
-def extract_bangkok(tar_path, out_path, bbox):
+def load_boundary(path):
+    bnd = gpd.read_file(path).to_crs("EPSG:4326")
+    union = bnd.union_all()
+    b = union.bounds  # (minx, miny, maxx, maxy)
+    return union, {"lon_min": b[0], "lat_min": b[1], "lon_max": b[2], "lat_max": b[3]}
+
+
+def extract_bangkok(tar_path, out_path, boundary, bbox):
     chunks = []
     with tarfile.open(tar_path, "r:bz2") as tar:
         for member in tar.getmembers():
@@ -21,12 +30,16 @@ def extract_bangkok(tar_path, out_path, bbox):
             f = tar.extractfile(member)
             for chunk in pd.read_csv(f, header=None, names=PROBE_COLS, chunksize=100_000,
                                      dtype={"gps_valid": float, "speed": float, "lat": float, "lon": float}):
-                bkk = chunk[
+                pre = chunk[
                     (chunk["gps_valid"] == 1) &
                     (chunk["speed"] > 0) &
                     (chunk["lat"].between(bbox["lat_min"], bbox["lat_max"])) &
                     (chunk["lon"].between(bbox["lon_min"], bbox["lon_max"]))
                 ]
+                if pre.empty:
+                    continue
+                gdf = gpd.GeoDataFrame(pre, geometry=points_from_xy(pre["lon"], pre["lat"]), crs="EPSG:4326")
+                bkk = pre[gdf.within(boundary)]
                 if not bkk.empty:
                     chunks.append(bkk)
 
@@ -68,7 +81,7 @@ def main():
 
     config = load_config()
     years = [d["year"] for d in config["datasets"]]
-    bbox = config["bangkok_bbox"]
+    boundary, bbox = load_boundary(config["boundary"]["bangkok"])
 
     files = [
         f"PROBE-{year}{month:02d}.tar.bz2"
@@ -103,7 +116,7 @@ def main():
         # Extract Bangkok rows then delete raw tar
         print(f"Extracting Bangkok rows: {filename}...")
         try:
-            extract_bangkok(tar_path, out_path, bbox)
+            extract_bangkok(tar_path, out_path, boundary, bbox)
             os.remove(tar_path)
             print(f"  Deleted raw: {filename}")
         except Exception as e:

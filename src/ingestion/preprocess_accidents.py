@@ -46,7 +46,6 @@ def _time_bin(h: int) -> str:
 
 def main():
     config        = load_config()
-    bbox          = config["bangkok_bbox"]
     bkk_path      = config["boundary"]["bangkok"]
     acc_cfg       = config["accidents"]
     raw_dir       = acc_cfg["raw_dir"]
